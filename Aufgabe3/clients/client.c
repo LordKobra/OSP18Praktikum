@@ -37,6 +37,12 @@ int main()
 	if(read(client, buf, sizeof(buf)) < 0)
 		die("Couldn't read message");
 	printf("[recv] %s \n", buf);
+//TEST EXIT	
+	if (write(client, "exit", 5) < 0)
+		die("Couldn't send message");
+	if(read(client, buf, sizeof(buf)) < 0)
+		die("Couldn't read message");
+	printf("[recv] %s \n", buf);
 
 	printf("Client Exit\n");
 	close(client);
