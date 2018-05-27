@@ -267,11 +267,15 @@ void waitProcess(char ** args){
         int k = 0;
         for(k = 0; k<pidcount; k++){
             //printf("%i terminated with Status %i \n", child_pids[k], WEXITSTATUS(statusList[k]));
-        char output[50];
-        sprintf(output, "%i terminated with Status %i \n", child_pids[k], WEXITSTATUS(statusList[k]));
-        if(write(incoming, output, sizeof(output))<0){
-            die("termination message in waitProcess did not work correctly");
-        }
+            char output[50];
+            if(WIFSIGNALED(child_pids[k])) {
+                sprintf(output, "\nSignal %i terminated process %i with Status %i \n", WSTOPSIG(child_pids[k]), child_pids[k], WEXITSTATUS(statuslist[k]));
+            }else {
+                sprintf(output, "%i terminated with Status %i \n", child_pids[k], WEXITSTATUS(statusList[k]));
+            }
+            if(write(incoming, output, sizeof(output))<0){
+                die("termination message in waitProcess did not work correctly");
+            }
         }
     }
     return;
