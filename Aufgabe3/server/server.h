@@ -192,7 +192,7 @@ void waitProcess(char ** args){
 
     ctrlC = 0;
         int status = 0;
-        //int currentPID = 0;
+        int currentPID = 0;
         int waited = 0;
         int i = 1;
        int pidcount = 0;
@@ -256,11 +256,12 @@ void waitProcess(char ** args){
             int j = 0;
             waited = 0;
             for(j = 0; j<pidcount; j++){
-                waitpid(child_pids[j], &status, 0);
-                if(WIFEXITED(status) || WIFSIGNALED(status)){
-            statusList[j] = status;
-            waited++;
-        }
+                currentPID = waitpid(child_pids[j], &status, 0);
+                    if(WIFEXITED(status) || WIFSIGNALED(status)){
+                                if(currentPID == child_pids[j])
+                                    statuslist[j] = status;	
+                                waited++;
+                    }
             }
 
         }
@@ -268,10 +269,10 @@ void waitProcess(char ** args){
         for(k = 0; k<pidcount; k++){
             //printf("%i terminated with Status %i \n", child_pids[k], WEXITSTATUS(statusList[k]));
             char output[50];
-            if(WIFSIGNALED(child_pids[k])) {
-                sprintf(output, "\nSignal %i terminated process %i with Status %i \n", WSTOPSIG(child_pids[k]), child_pids[k], WEXITSTATUS(statuslist[k]));
+            if(WIFSIGNALED(statuslist[k])) {
+                sprintf(output, "\nSignal %i terminated process %i with Status %i \n", WSTOPSIG(statuslist[k]), child_pids[k], WEXITSTATUS(statuslist[k]));
             }else {
-                sprintf(output, "%i terminated with Status %i \n", child_pids[k], WEXITSTATUS(statusList[k]));
+                sprintf(output, "%i finished with Status %i \n", child_pids[k], WEXITSTATUS(statusList[k]));
             }
             if(write(incoming, output, sizeof(output))<0){
                 die("termination message in waitProcess did not work correctly");
