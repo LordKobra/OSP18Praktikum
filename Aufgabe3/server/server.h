@@ -257,7 +257,7 @@ void waitProcess(char ** args){
             waited = 0;
             for(j = 0; j<pidcount; j++){
                 waitpid(child_pids[j], &status, 0);
-                if(WIFEXITED(status)){
+                if(WIFEXITED(status) || WIFSIGNALED(status)){
             statusList[j] = status;
             waited++;
         }
