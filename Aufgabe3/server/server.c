@@ -1,4 +1,4 @@
-#include <stdio.h>
+##include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,127 +16,79 @@
 #define False 0
 
 
+
+void remShell(){
+	char buf[256];	
+	char* output = NULL;
+	char** args;
+	int status = 1; //of command
+
+	
+	//print directory  (CHECK)
+	directory(dir);	
+	do{
+		
+		printf("~%s/> ", strtok(dir,"\r\n"));
+		sprintf(output, "~%s/> ", strtok(dir,"\r\n"));
+		if(write(cfd, output, 30) < 0){	
+			die("could not send pwd");
+		}
+			//read command  (CHECK)S
+		if(read(cfd, buf, 30)<0)
+			die("could not read incoming message");
+		if (buf != NULL){
+				
+			//parse input -> command and arguments (CHECK)
+			args = parse(buf);
+			//exec command   
+			status = execute(args);
+		
+	
+			//free mem
+			free(buf);
+			free(args);
+		}	
+	}while(status);	
+}
+
+
 int main()
 {
-    struct sockaddr_in srv_addr;
-    socklen_t sad_sz = sizeof(struct sockaddr_in);
-    int opt = True;                         //opt for setsocketopt option
-    int mSfd, addresslen;
-    //int clientServer[30], maxClients = 30;                 // change to pointer
-    //unsigned int csSize = 0;               //for size of clientServer when clientServer is a int*
-    //ssize_t bytes;
-    char buf[256];
-    //fd_set readables;
-    pid_t pid;
-
-
-    srv_addr.sin_family = AF_INET;
-    srv_addr.sin_port = htons(PORT);
-    srv_addr.sin_addr.s_addr = INADDR_ANY;
-
-    if ((mSfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) //socket()
-        die("Couldn't open the socket");
-
-    if ((setsockopt(mSfd, SOL_SOCKET, SO_REUSEADDR, (char *) &opt, sizeof(opt))) < 0 )    //accept multiple connections
-        die("(setsockopt) multiple connection failed");
-
-
-    if (bind(mSfd, (struct sockaddr*) &srv_addr, sad_sz) < 0)   //bind()
-        die("Couldn't bind socket");
-
-    if (listen(mSfd, SOMAXCONN) < 0)
-        die("Couldn't listen to the socket");       //listen()
-
-    /*for(int i = 0; i < maxClients; i++){
-        clientServer[i] = 0;                    //no client servers as of yet
-    }*/
-
-    addresslen = sizeof(srv_addr);
-
-    while(True){
-
-        /* while true check for incoming clients
-        if there then fork() and let child deal with input and output
-        */
-        //wait for something to happen
-        //FD_ZERO(&readables);
-        //FD_SET(mSfd, &readables);
+    struct sockaddr_in srv_addr, cli_addr;
+	socklen_t sad_sz = sizeof(struct sockaddr_in);	
+	int opt = 1;
+	pid_t pid;
 	
-        //activity = select( 1 , &readables, NULL, NULL, NULL);
-printf("Ich bin's, der Server\n\n\n");
-       /* if((activity < 0) && (errno != EINTR)){
-            die("select error in while Loop");
-        }*/
+	srv_addr.sin_family = AF_INET;
+	srv_addr.sin_port = htons(PORT);
+	srv_addr.sin_addr.s_addr = INADDR_ANY;
+	
+	if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		die("Couldn't open the socket");
 
-       // if(FD_ISSET(mSfd, &readables)){    //something happend with mSfd implies new incoming connection
-
-            if((incoming = accept( mSfd, (struct sockaddr*) &srv_addr, (socklen_t*) &addresslen)) <0){
-                die("accept in while loop/ something happend with mSfd");
-            }
-
-            if((pid = fork()) == 0){        //if child
-                // accept inputs write outputs
-                // in a while loop thatcwith select
-                if(read(incoming, buf, sizeof(buf)) < 0){
-                    die("problems with read in child");
-                }
-
-                char * line = NULL;
-                char** args;
-		char* output = NULL;
-                int status = 1; //of command
-
-
-                //print directory  (CHECK)
-                directory(dir);
-                do{
-
-                    //printf("~%s/> ", strtok(dir,"\r\n"));
-			sprintf(dirOutput, "~%s/> ", strtok(dir,"\r\n"));
-			if(write(incoming, dirOutput, 30)<0){
-				die("writing directory did not work");
-			} 
-                        //read command  (CHECK)
-                    strcpy( line, buf);
-                    if (line != NULL){             //this part depends on client if client message includes \n this needs to be changed
-
-                        //parse input -> command and arguments (CHECK)
-                        args = parse(line);
-                        //exec command
-                        status = execute(args);
-
-
-                        //free mem
-                        free(line);
-                        free(args);
-                    }
-                }while(status);
-                close(incoming);
-                _exit(EXIT_SUCCESS);          //terminate after client uses exit in shell
-
-            //}
-               // parent just waits for next connection
-        }
-
-
-
-    }
-
-
-    /*
-    cfd = accept(sfd, (struct sockaddr*) &cli_addr, &sad_sz);
-    if (cfd < 0)
-        die("Couldn't accept incoming connection");
-    while ((bytes = read(cfd, buf, sizeof(buf))) != 0)
-    {
-        if (bytes < 0)
-            die("Couldn't receive message");
-        if (write(cfd, buf, bytes) < 0)
-            die("Couldn't send message");
-    }
-    close(cfd);
-    close(sfd);
-    */
-    close(mSfd);
-    return 0;
+	//socket can be reused
+	if ((setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, (char *) &opt, sizeof(opt))) < 0 )    
+		die("(setsockopt) multiple connection failed");
+	
+	if (bind(sfd, (struct sockaddr*) &srv_addr, sad_sz) < 0){
+		printf("%s \n", strerror(errno));	
+		die("Couldn't bind socket");
+	}
+	
+	if (listen(sfd, 1) < 0)
+		die("Couldn't listen to the socket");
+	while(True){
+		if((cfd = accept(sfd, (struct sockaddr*) &cli_addr,&sad_sz))<0){
+			die("could not accept incoming connection");
+		}
+		if((pid = fork()) < 0)
+			die("fork did not work correctly");
+		if(pid == 0){ // if child
+			remShell();
+		}
+		
+	}
+	//close(cfd);
+	close(sfd);
+	return 0;
 } 
