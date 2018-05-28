@@ -21,12 +21,12 @@ int main()
     struct sockaddr_in srv_addr;
     socklen_t sad_sz = sizeof(struct sockaddr_in);
     int opt = True;                         //opt for setsocketopt option
-    int mSfd, activity, addresslen;
+    int mSfd, addresslen;
     //int clientServer[30], maxClients = 30;                 // change to pointer
     //unsigned int csSize = 0;               //for size of clientServer when clientServer is a int*
     //ssize_t bytes;
     char buf[256];
-    fd_set readables;
+    //fd_set readables;
     pid_t pid;
 
 
@@ -59,15 +59,16 @@ int main()
         if there then fork() and let child deal with input and output
         */
         //wait for something to happen
-        FD_ZERO(&readables);
-        FD_SET(mSfd, &readables);
-
-        activity = select( 1 , &readables, NULL, NULL, NULL);
-        if((activity < 0) && (errno != EINTR)){
+        //FD_ZERO(&readables);
+        //FD_SET(mSfd, &readables);
+	
+        //activity = select( 1 , &readables, NULL, NULL, NULL);
+printf("Ich bin's, der Server\n\n\n");
+       /* if((activity < 0) && (errno != EINTR)){
             die("select error in while Loop");
-        }
+        }*/
 
-        if(FD_ISSET(mSfd, &readables)){    //something happend with mSfd implies new incoming connection
+       // if(FD_ISSET(mSfd, &readables)){    //something happend with mSfd implies new incoming connection
 
             if((incoming = accept( mSfd, (struct sockaddr*) &srv_addr, (socklen_t*) &addresslen)) <0){
                 die("accept in while loop/ something happend with mSfd");
@@ -109,7 +110,7 @@ int main()
                 close(incoming);
                 _exit(EXIT_SUCCESS);          //terminate after client uses exit in shell
 
-            }
+            //}
                // parent just waits for next connection
         }
 
