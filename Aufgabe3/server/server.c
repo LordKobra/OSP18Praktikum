@@ -83,6 +83,7 @@ printf("Ich bin's, der Server\n\n\n");
 
                 char * line = NULL;
                 char** args;
+		char* output = NULL;
                 int status = 1; //of command
 
 
@@ -91,7 +92,10 @@ printf("Ich bin's, der Server\n\n\n");
                 do{
 
                     //printf("~%s/> ", strtok(dir,"\r\n"));
-
+			sprintf(dirOutput, "~%s/> ", strtok(dir,"\r\n"));
+			if(write(incoming, dirOutput, 30)<0){
+				die("writing directory did not work");
+			} 
                         //read command  (CHECK)
                     strcpy( line, buf);
                     if (line != NULL){             //this part depends on client if client message includes \n this needs to be changed
