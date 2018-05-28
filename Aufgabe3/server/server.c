@@ -1,4 +1,4 @@
-##include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -28,9 +28,10 @@ void remShell(){
 	directory(dir);	
 	do{
 		
-		printf("~%s/> ", strtok(dir,"\r\n"));
+		printf("hallo\n\n\n\n\n\n\n");
 		sprintf(output, "~%s/> ", strtok(dir,"\r\n"));
-		if(write(cfd, output, 30) < 0){	
+		strcpy(buf, output);
+		if(write(cfd, buf, sizeof(buf)) < 0){	
 			die("could not send pwd");
 		}
 			//read command  (CHECK)S
@@ -45,7 +46,7 @@ void remShell(){
 		
 	
 			//free mem
-			free(buf);
+			
 			free(args);
 		}	
 	}while(status);	
