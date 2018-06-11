@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/select.h>
 
 #define _XOPEN_SOURCE
 #include <ucontext.h>
@@ -23,6 +24,7 @@ typedef struct tcb_s
 	int ID;
 	int joiner;
 	ucontext_t context;
+	int fd;
 	/* data needed to restore the context */
 	
 } tcb_t;
@@ -30,6 +32,8 @@ typedef struct tcb_s
 int current_active;
 tcb_t* threeds;
 int threeds_size;
+fd_set set;
+int fd_amount;
 
 void ult_init(ult_f f)
 {	
@@ -37,6 +41,7 @@ void ult_init(ult_f f)
 	threeds = ( tcb_t*) malloc(10*sizeof(tcb_t));
 	threeds_size = 10;
 	current_free = 0;
+	fd_amount = 0;
 	if(getcontext(&top.context) != 0){
 		fprintf(stderr, "in ult_init getcontext failed");
 		exit(-1);
@@ -70,6 +75,7 @@ int ult_spawn(ult_f f)
 	spawned.context.uc_stack.ss_size = THREAD_STACK_SIZE;
 	spawned.ID = current_free;
 	spawned.active = 1;
+	spawned.fd = -1;
 	makecontext(&spawned.context, f, 0);
 	if(current_free + 1 == threeds_size){
 		threeds = (tcb_t*)realloc(threeds, (threeds_size + 10)*sizeof(tcb_t));
@@ -88,9 +94,25 @@ void ult_yield()
 		next = 1;
 	}
 	int counter = 0;
+	struct timeval time;
+	time.tv_sec = 0;
+	time.tv_usec = 100;
+	fd_set open ;
 	while(counter < threeds_size -2){
+		open =set;
+		if(select(fd_amount, &open, NULL, NULL , &time) == -1){
+			fprintf(stderr, "reason of malfuction of select in yield: %s\n",strerror(errno));
+			exit(-1);	
+		} 
 		if(threeds[next].active == 1){
-			if(swapcontext(&threeds[current_active].context, &threeds[next].context) == -1){
+			if(threeds[next].fd != -1){
+				if(FD_ISSET(threeds[next].fd, &open) != 0){
+					if(swapcontext(&threeds[current_active].context, &threeds[next].context) == -1){
+					fprintf(stderr, "in yield swap has malfunctioned");
+					exit(-1);
+					}
+				}
+			}else if(swapcontext(&threeds[current_active].context, &threeds[next].context) == -1){
 				fprintf(stderr, "in yield swap has malfunctioned");
 				exit(-1);
 			}
@@ -139,5 +161,23 @@ int ult_join(int tid, int* status)
 
 ssize_t ult_read(int fd, void* buf, size_t size)
 {
-	return 0;
+	char curr;
+	char * ans = (char*)malloc(10);
+	int curr_pos = 0;
+	int buf_size = 10;
+	threeds[current_active].fd = fd;
+	FD_SET(fd, &set);
+	fd_amount++;
+	ult_yield();
+	while(read(fd, &curr, 1) > 0){
+		if((curr_pos + 1) == buf_size){
+			buf = realloc(buf, buf_size + 10);
+			buf_size += 10;		
+		} 
+		ans[curr_pos++] = curr;
+		
+	}
+	
+	buf = ans;
+	return (ssize_t)curr_pos;
 }
