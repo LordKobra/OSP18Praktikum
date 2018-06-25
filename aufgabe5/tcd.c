@@ -4,7 +4,13 @@
 #include <sched.h>
 #include <unistd.h>
 #include <time.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
 
 pthread_t* thread;
@@ -15,6 +21,15 @@ double dur;
 int fun;
 void* (*collectorp)(void* val);
 
+unsigned int* randChoice(void* point);
+int circle(int origin, int offset);
+int checkKonto(int self, int check);
+int checkAmount(int check);
+void collect(int self, int victim);
+void day(int self);
+void* collector(void* val);
+void exec();
+
 struct CollectorInfo {
 	int Eingangsbuchungen;
 	int Ausgangsbuchungen;
@@ -24,11 +39,11 @@ struct CollectorInfo {
 struct CollectorInfo* kontos;
 
 
-unsigned int* randChoice(void* piont){
-	unsigned int* ans = piont;
+unsigned int* randChoice(void* point){
+	unsigned int* ans = point;
 	*ans = time(NULL) ^ getpid() ^ pthread_self();
 	int temp = rand_r(ans);	
-	*ans = temp;
+	*ans = temp; 
 	return ans;
 }
 
@@ -64,12 +79,13 @@ int checkAmount(int check){
 }
 
 void collect(int self, int victim){
+	//printf("%i collecting from %i, with %i amount of money\n", self, victim, kontos[victim].Kontostand);
 	while(!checkAmount(victim)){
 		waiting[self] = victim;
-	}
-	if(!circle(self, victim)){
-		fprintf(stderr, "deadlock still possible");
-		exit(-1);
+		if(circle(self, victim)){
+				day(self);   //to avoid deadlock
+		}
+
 	}
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	pthread_mutex_lock(active+victim);
@@ -86,6 +102,23 @@ void collect(int self, int victim){
 }
 
 
+void day(int self){
+	int temp = 0;	
+	int *stuff = &temp;
+	while(1){	
+		do{	
+			temp = (*randChoice(stuff)) % coll ;
+			//printf("%i : %i inside\n", temp, (int)pthread_self());
+		}while(pthread_equal(pthread_self(), thread[temp]) || !checkKonto(self, temp));
+		//printf("%i : %i\n", temp, self);		
+		collect(self, temp);
+		sched_yield();
+	}
+	return;
+		
+}
+
+
 void* collector (void *val){	
 	int self = 0;
 	while(!pthread_equal(thread[self], pthread_self())){
@@ -99,14 +132,7 @@ void* collector (void *val){
 	kontos[self].Ausgangsbuchungen = 0;
 	kontos[self].Kontostand = fun;
 	waiting[self] = -1;
-	int temp = 0;	
-	int *stuff = &temp;
-	while(1){	
-		do{	
-			temp = *randChoice(stuff) % coll ;
-		}while(pthread_equal(pthread_self(), thread[temp]) || !checkKonto(self, temp));
-		collect(self, temp);
-	}	
+	day(self);
 	return NULL;
 }
 
